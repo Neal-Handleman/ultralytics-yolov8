@@ -173,7 +173,7 @@ class BasePredictor:
 
             # postprocess
             with self.dt[2]:
-                self.results = self.postprocess(preds, im, im0s)
+                self.results = self.postprocess(preds, im, im0s) # return preds
             self.run_callbacks('on_predict_postprocess_end')
 
             # visualize, save, write results

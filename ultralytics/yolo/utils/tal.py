@@ -75,6 +75,7 @@ class TaskAlignedAssigner(nn.Module):
 
     @torch.no_grad()
     def forward(self, pd_scores, pd_bboxes, anc_points, gt_labels, gt_bboxes, mask_gt):
+        # pd_scores 预测得分， pd_bboxes , anchor_point
         """This code referenced to
            https://github.com/Nioolek/PPYOLOE_pytorch/blob/master/ppyoloe/assigner/tal_assigner.py
 

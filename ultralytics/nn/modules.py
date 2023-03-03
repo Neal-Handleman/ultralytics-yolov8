@@ -31,9 +31,11 @@ class Conv(nn.Module):
         self.act = self.default_act if act is True else act if isinstance(act, nn.Module) else nn.Identity()
 
     def forward(self, x):
+        print("Conv::", x.shape)
         return self.act(self.bn(self.conv(x)))
 
     def forward_fuse(self, x):
+        print("Conv::", x.shape)
         return self.act(self.conv(x))
 
 
@@ -77,7 +79,10 @@ class DFL(nn.Module):
 
     def forward(self, x):
         b, c, a = x.shape  # batch, channels, anchors
-        return self.conv(x.view(b, 4, self.c1, a).transpose(2, 1).softmax(1)).view(b, 4, a)
+        print("DFL::", x.shape)
+        ans = self.conv(x.view(b, 4, self.c1, a).transpose(2, 1).softmax(1)).view(b, 4, a)
+        print("ans::", ans.shape)
+        return ans
         # return self.conv(x.view(b, self.c1, 4, a).softmax(1)).view(b, 4, a)
 
 
@@ -188,11 +193,15 @@ class C2f(nn.Module):    # C2F模块
         self.m = nn.ModuleList(Bottleneck(self.c, self.c, shortcut, g, k=((3, 3), (3, 3)), e=1.0) for _ in range(n))
 
     def forward(self, x):
+        print("C2F",x.shape)
         y = list(self.cv1(x).chunk(2, 1))
         y.extend(m(y[-1]) for m in self.m)
-        return self.cv2(torch.cat(y, 1))
+        result = self.cv2(torch.cat(y, 1))
+        print("C2F end", result.shape)
+        return result
 
     def forward_split(self, x):
+        print("C2F split", x.shape)
         y = list(self.cv1(x).split((self.c, self.c), 1))
         y.extend(m(y[-1]) for m in self.m)
         return self.cv2(torch.cat(y, 1))
@@ -402,6 +411,7 @@ class Detect(nn.Module):
 
     def forward(self, x):
         shape = x[0].shape  # BCHW
+        print("Detect::", shape)
         for i in range(self.nl):
             x[i] = torch.cat((self.cv2[i](x[i]), self.cv3[i](x[i])), 1)
         if self.training:
@@ -415,7 +425,13 @@ class Detect(nn.Module):
             box = x_cat[:, :self.reg_max * 4]
             cls = x_cat[:, self.reg_max * 4:]
         else:
-            box, cls = torch.cat([xi.view(shape[0], self.no, -1) for xi in x], 2).split((self.reg_max * 4, self.nc), 1)
+            for t in x:
+                print("each x :::",t.shape)
+            temp = torch.cat([xi.view(shape[0], self.no, -1) for xi in x], 2)
+            print("temp:::",temp.shape)
+            box, cls = temp.split((self.reg_max * 4, self.nc), 1)
+            print("box:",box.shape)
+            print("cls",cls.shape)
         dbox = dist2bbox(self.dfl(box), self.anchors.unsqueeze(0), xywh=True, dim=1) * self.strides
         y = torch.cat((dbox, cls.sigmoid()), 1)
         return y if self.export else (y, x)
